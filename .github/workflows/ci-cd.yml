@@ -38,9 +38,10 @@ jobs:
         run: flake8 . || true
 
       - name: Smoke test
-        run: python - <<'PY'
-print("deps ok")
-PY
+        run: |
+          python - <<'PY'
+          print("deps ok")
+          PY
 
   docker:
     name: Build & Push Docker image (GHCR)
