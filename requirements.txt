@@ -7,3 +7,5 @@ onnxsim
 mlflow
 psutil
 boto3
+fastapi
+uvicorn
