@@ -2,10 +2,9 @@ name: CI/CD
 
 on:
   push:
-    branches: [ main, master ]
-    tags: [ "v*", "release-*" ]
+    branches: [ "main", "master" ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ "main", "master" ]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -27,36 +26,32 @@ jobs:
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('requirements-serve.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          restore-keys: ${{ runner.os }}-pip-
 
-      - name: Install runtime deps (only requirements-serve.txt)
+      - name: Install runtime deps (requirements-serve.txt only)
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -r requirements-serve.txt
-          pip install pytest flake8  # optional tools for this job
+          pip install flake8 pytest
 
-      - name: Lint
+      - name: Lint (non-blocking)
         run: flake8 . || true
 
-      - name: Smoke test import
-        run: python -c "import sys; print('OK: deps load')"
+      - name: Smoke test
+        run: python - <<'PY'
+print("deps ok")
+PY
 
   docker:
-    name: Build & Push Docker image
+    name: Build & Push Docker image (GHCR)
     runs-on: ubuntu-latest
     needs: build
     permissions:
       contents: read
       packages: write
-    env:
-      IMAGE_NAME: catdog-serve
-      DOCKERFILE_PATH: Dockerfile.mlflow
+
     steps:
       - uses: actions/checkout@v4
-
-      - id: lc
-        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
@@ -68,36 +63,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Optional Docker Hub login (if you also push there)
-      - name: Log in to Docker Hub
-        if: ${{ secrets.DOCKERHUB_USERNAME && secrets.DOCKERHUB_TOKEN }}
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: |
-            ghcr.io/${{ steps.lc.outputs.owner }}/catdogcicd/${{ env.IMAGE_NAME }}
-            ${{ secrets.DOCKERHUB_USERNAME && secrets.DOCKERHUB_TOKEN && format('{0}/{1}', secrets.DOCKERHUB_USERNAME, env.IMAGE_NAME) || '' }}
+          images: ghcr.io/${{ github.repository_owner }}/catdogcicd/catdog-serve
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=long
             type=ref,event=branch
-            type=semver,pattern={{version}},enable={{is_tag}}
-            type=semver,pattern={{major}}.{{minor}},enable={{is_tag}}
-          labels: |
-            org.opencontainers.image.source=${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Build & Push (multi-arch)
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ${{ env.DOCKERFILE_PATH }}
+          file: Dockerfile.mlflow
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
