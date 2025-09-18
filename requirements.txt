@@ -1,3 +1,9 @@
 torch
 torchvision
 tqdm
+onnx
+onnxruntime
+onnxsim
+mlflow
+psutil
+boto3
