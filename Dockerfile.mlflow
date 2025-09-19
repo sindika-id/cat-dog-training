@@ -19,7 +19,6 @@ RUN pip install -r requirements-serve.txt
 
 # Copy only what's needed for inference
 COPY app.py ./
-COPY models/ ./models/
 
 # Expose HTTP port
 EXPOSE 8000
