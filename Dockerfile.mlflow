@@ -18,7 +18,7 @@ COPY requirements-serve.txt ./
 RUN pip install -r requirements-serve.txt
 
 # Copy only what's needed for inference
-COPY app.py ./
+COPY app_mlflow.py ./
 
 # Expose HTTP port
 EXPOSE 8000
@@ -28,4 +28,4 @@ HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
   CMD curl -fsS http://127.0.0.1:8000/health || exit 1
 
 # Start FastAPI with uvicorn
-CMD ["uvicorn", "app-mlflow:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app_mlflow:app", "--host", "0.0.0.0", "--port", "8000"]
